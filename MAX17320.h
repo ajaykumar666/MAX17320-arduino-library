@@ -1,5 +1,6 @@
 #include "register.h"
 #include "config.h"
+#include "struct.h"
 
 #define DEVICE_ADDRESS 0x36
 #define NVM_ADDRESS 0x0B
@@ -76,6 +77,15 @@ namespace MAX17320
   {
     return n & ~(1 << k);
   };
+
+  // Read the n bits for reading different values in register
+  uint16_t mask_bit_read(uint16_t data, uint8_t read_size, uint8_t left_shift_size)
+  {
+    data = data >> left_shift_size;
+    uint8_t mask = 0xFF;
+    mask = mask >> (8 - read_size);
+    return data & mask;
+  }
 
   /////////////////////////
   const float VALRTTH_LSB_RESOLUTION = 0.02; // mV
@@ -210,6 +220,10 @@ namespace MAX17320
     return read_named_register_nvm(RegisterNvm::NPackCfg);
   }
 
+  uint16_t read_charge_voltage_config()
+  {
+    return read_named_register_nvm(RegisterNvm::NJEITAV);
+  }
   //////////////////////////////////
   void clear_protection_alert()
   {
@@ -229,20 +243,24 @@ namespace MAX17320
   void set_pack_config(uint8_t n_cells, uint8_t n_therms, ThermistorType therm_type, ChargePumpVoltageConfiguration charge_pump_voltage_config,
                        AlwaysOnRegulatorConfiguration always_on_regulator_config, BatteryPackUpdate battery_pack_update)
   {
-    if (n_cells < 2 || n_cells > 4)
+    // if (n_cells < 2 || n_cells > 4)
+    // {
+    //   //    throw InvalidConfigurationValue(n_cells);
+    // }
+
+    // if (n_therms > 4)
+    // {
+    //   //    throw InvalidConfigurationValue(n_therms);
+    // }
+    if ((n_cells >= 2 || n_cells <= 4) && n_therms <= 4)
     {
-      //    throw InvalidConfigurationValue(n_cells);
+      n_cells = n_cells - 2;
+      n_therms = n_therms << 2;
+      uint16_t code = n_cells | n_therms | static_cast<uint16_t>(therm_type) | static_cast<uint16_t>(charge_pump_voltage_config) | static_cast<uint16_t>(always_on_regulator_config) | static_cast<uint16_t>(battery_pack_update);
+      unlock_write_protection();
+      write_named_register_nvm(RegisterNvm::NPackCfg, code);
+      lock_write_protection();
     }
-    n_cells = n_cells - 2;
-    if (n_therms > 4)
-    {
-      //    throw InvalidConfigurationValue(n_therms);
-    }
-    n_therms = n_therms << 2;
-    uint16_t code = n_cells | n_therms | static_cast<uint16_t>(therm_type) | static_cast<uint16_t>(charge_pump_voltage_config) | static_cast<uint16_t>(always_on_regulator_config) | static_cast<uint16_t>(battery_pack_update);
-    unlock_write_protection();
-    write_named_register_nvm(RegisterNvm::NPackCfg, code);
-    lock_write_protection();
   }
 
   void set_alert_shutdown_enable(bool enable)
@@ -315,6 +333,24 @@ namespace MAX17320
     }
   }
 
+  void set_overvoltage_protection(uint16_t OVPPermFail, uint16_t ChgDetTh, uint16_t dOVP, uint16_t dOVPR)
+  {
+    // nJEITAV ChargeVoltage;
+    // uint16_t charge_voltage = read_charge_voltage_config();
+    // mask_bit_read(charge_voltage, uint8_t read_size, uint8_t left_shift_size)
+    if (OVPPermFail <= 150, ChgDetTh <= 80, dOVP <= 150, dOVPR <= 150)
+    {
+      OVPPermFail = (OVPPermFail / 20) << 12;
+      ChgDetTh = (ChgDetTh / 10) << 8;
+      dOVP = (dOVP / 10) << 4;
+      dOVPR = dOVPR / 10;
+      uint16_t code = OVPPermFail | ChgDetTh | dOVP | dOVPR;
+
+      unlock_write_protection();
+      write_named_register_nvm(RegisterNvm::NOVPrtTh, code);
+      lock_write_protection();
+    }
+  }
   // array<float,2> read_voltage_alert_threshold() {
   //     uint16_t code = read_named_register(Register::VAlrtTh);
   //     uint8_t raw[2] = {

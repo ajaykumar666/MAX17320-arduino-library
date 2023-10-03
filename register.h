@@ -45,6 +45,8 @@ enum RegisterNvm
     NIAlrtTh = 0x8E,
     NUVPrtTh = 0xD0,
     NBalTh = 0xD4,
+    NJEITAV = 0xD9,
+    NOVPrtTh = 0xDA;
 };
 
 // All flags contained within the status register

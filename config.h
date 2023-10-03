@@ -52,12 +52,19 @@ enum BatteryBalancingZener
 enum CellBalancingConfig
 {
   Disable = 0,
+  /// For 2.5mV
   mV25 = 1 << 10,
+  /// For 5mV
   mV50 = 2 << 10,
+  /// For 10mV
   mV100 = 3 << 10,
+  /// For 20mV
   mV200 = 4 << 10,
+  /// For 40mV
   mV400 = 5 << 10,
+  /// For 80mV
   mV800 = 6 << 10,
+  /// For 160mV
   mV1600 = 7 << 10,
 };
 #endif
